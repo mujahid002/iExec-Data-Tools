@@ -1,4 +1,5 @@
 import { IExecDataProtector } from "@iexec/dataprotector";
+import { IExecWeb3mail } from "@iexec/web3mail";
 import { useEffect, useState } from "react";
 import axios, { AxiosResponse } from "axios";
 
@@ -7,6 +8,7 @@ export default function Home() {
   const [web3Provider, setWeb3Provider] = useState(null);
   const [email, setEmail] = useState("");
   const [protectAddress, setProtectedAddress] = useState("");
+  const [userData, setUserData] = useState([]);
 
   // Function to connect to MetaMask wallet
   async function connectWallet() {
@@ -46,11 +48,6 @@ export default function Home() {
       console.error("MetaMask extension not detected");
     }
   }
-
-  useEffect(() => {
-    connectWallet();
-    setEmail("");
-  }, [address]);
 
   const handleProtectMail = async () => {
     try {
@@ -128,6 +125,31 @@ export default function Home() {
     // You can set the email value to state here if needed
     setProtectedAddress(addressValue);
   }
+
+  const fetchYourData = async () => {
+    try {
+      // const web3mail = new IExecWeb3mail(web3Provider);
+      // const contactsList = await web3mail.fetchMyContacts();
+      const dataProtector = new IExecDataProtector(window.ethereum);
+      const listProtectedData = await dataProtector.fetchProtectedData({
+        owner: address,
+      });
+      setUserData(listProtectedData);
+      // setUserData((prevData) => ({
+      //   ...prevData,
+      //   listProtectedData
+      // }));
+      console.log("user data is: ", userData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    connectWallet();
+    fetchYourData();
+    setEmail("");
+  }, [address]);
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-100">
@@ -212,23 +234,33 @@ export default function Home() {
         </div>
 
         {/* Table */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-center text-black">
           <table className="table-auto">
             <thead>
               <tr>
-                <th className="px-4 py-2 bg-gray-200">Address</th>
-                <th className="px-4 py-2 bg-gray-200">Access Granted</th>
+                <th className="px-4 py-2 bg-gray-200 text-black">
+                  Data Address
+                </th>
+                <th className="px-4 py-2 bg-gray-200 text-black">
+                  Access Granted
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="border px-4 py-2">Sample Address 1</td>
-                <td className="border px-4 py-2">Yes</td>
-              </tr>
-              <tr>
-                <td className="border px-4 py-2">Sample Address 2</td>
-                <td className="border px-4 py-2">No</td>
-              </tr>
+              {Array.isArray(userData) && userData.length > 0 ? (
+                userData.map((data, index) => (
+                  <tr key={index}>
+                    <td className="border px-4 py-2">{data.owner}</td>
+                    <td className="border px-4 py-2">{data.address}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="border px-4 py-2" colSpan="2">
+                    No data available
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
