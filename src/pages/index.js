@@ -84,14 +84,15 @@ export default function Home() {
   const handleGrantAccess = async () => {
     try {
       const dataProtector = new IExecDataProtector(window.ethereum);
+      npm;
 
       // TODO:
       // tried to give access to all addresses by giving 0x00000000000000000000000000000000000000 to both authorizedApp & authorizedUser but giving error
       // Need to check
       const grantedAccess = await dataProtector.grantAccess({
         protectedData: protectedAddress,
-        authorizedApp: "0x1c620232Fe5Ab700Cc65bBb4Ebdf15aFFe96e1B5",
-        authorizedUser: "0x1c620232Fe5Ab700Cc65bBb4Ebdf15aFFe96e1B5",
+        authorizedApp: "0x00000000000000000000000000000000000000",
+        authorizedUser: "0x00000000000000000000000000000000000000",
       });
 
       if (
