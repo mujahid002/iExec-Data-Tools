@@ -147,7 +147,8 @@ export default function Home() {
 
           <span id="userAddress" className="text-gray-700 mb-4"></span>
           <div className="flex space-x-4">
-            <div id="emailForm" className="flex flex-col">
+            {/* Email form */}
+            <div className="flex flex-col">
               <input
                 type="email"
                 placeholder="Email"
@@ -163,23 +164,25 @@ export default function Home() {
                 Submit
               </button>
             </div>
-            <div id="emailForm" className="flex flex-col">
+            {/* Protected Address form */}
+            <div className="flex flex-col">
               <input
                 type="email"
                 placeholder="Protected Address"
-                id="email"
+                id="protectedAddress"
                 className="rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
                 onChange={protectedAddressChange}
               />
               <button
-                id="submitEmailButton"
+                id="submitProtectedAddressButton"
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 onClick={() => handleGrantAccess()}
               >
                 Grant Access to Data
               </button>
             </div>
-            <div id="mailContentForm" className="flex flex-col">
+            {/* Mail Content form */}
+            <div className="flex flex-col">
               <input
                 type="text"
                 placeholder="Protected Data"
@@ -207,12 +210,14 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="mt-8">
+
+        {/* Table */}
+        <div className="mt-8 flex justify-center">
           <table className="table-auto">
             <thead>
               <tr>
-                <th className="px-4 py-2">Address</th>
-                <th className="px-4 py-2">Access Granted</th>
+                <th className="px-4 py-2 bg-gray-200">Address</th>
+                <th className="px-4 py-2 bg-gray-200">Access Granted</th>
               </tr>
             </thead>
             <tbody>
