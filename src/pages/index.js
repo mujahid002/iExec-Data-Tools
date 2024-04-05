@@ -2,12 +2,13 @@ import { IExecDataProtector } from "@iexec/dataprotector";
 import { IExecWeb3mail } from "@iexec/web3mail";
 import { useEffect, useState } from "react";
 import axios, { AxiosResponse } from "axios";
+import AsyncGrantedAccessFetcher from "@/components/grantAccess";
 
 export default function Home() {
   const [address, setAddress] = useState("");
   const [web3Provider, setWeb3Provider] = useState(null);
   const [email, setEmail] = useState("");
-  const [protectAddress, setProtectedAddress] = useState("");
+  const [protectedAddress, setProtectedAddress] = useState("");
   const [userData, setUserData] = useState([]);
 
   // Function to connect to MetaMask wallet
@@ -80,35 +81,45 @@ export default function Home() {
       console.error("Unable to run: handleProtectMail", error);
     }
   };
-  const handleGrantAccess = async (protectedAddress) => {
+  const handleGrantAccess = async () => {
     try {
-      const dataProtector = new IExecDataProtector(web3Provider);
+      const dataProtector = new IExecDataProtector(window.ethereum);
 
+      // TODO:
+      // tried to give access to all addresses by giving 0x00000000000000000000000000000000000000 to both authorizedApp & authorizedUser but giving error
+      // Need to check
       const grantedAccess = await dataProtector.grantAccess({
         protectedData: protectedAddress,
-        authorizedApp: "0x00000000000000000000000000000000000000",
-        authorizedUser: "0x00000000000000000000000000000000000000",
+        authorizedApp: "0x1c620232Fe5Ab700Cc65bBb4Ebdf15aFFe96e1B5",
+        authorizedUser: "0x1c620232Fe5Ab700Cc65bBb4Ebdf15aFFe96e1B5",
       });
 
-      const res = await axios.post(
-        "http://localhost:5001/store-protectedData",
-        {
-          protectedData: protectedData,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (res.status === 200) {
-        setEmail("");
-      } else {
-        alert("Server error occurred. Please try again later.");
+      if (
+        grantedAccess.workerpoolrestrict ==
+        "0x00000000000000000000000000000000000000"
+      ) {
+        alert("Given Access to Public");
       }
+
+      // const res = await axios.post(
+      //   "http://localhost:5001/store-protectedData",
+      //   {
+      //     protectedData: protectedData,
+      //   },
+      //   {
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //   }
+      // );
+
+      // if (res.status === 200) {
+      //   setEmail("");
+      // } else {
+      //   alert("Server error occurred. Please try again later.");
+      // }
     } catch (error) {
-      console.error("Unable to run: handleProtectMail", error);
+      console.error("Unable to run: handleGrantAccess", error);
     }
   };
 
@@ -139,11 +150,26 @@ export default function Home() {
       //   ...prevData,
       //   listProtectedData
       // }));
-      console.log("user data is: ", userData);
+      // console.log("user data is: ", userData);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
   };
+  // const fetchGrantedAccess = async (dataAddress) => {
+  //   try {
+  //     const listGrantedAccess = await dataProtector.fetchGrantedAccess({
+  //       protectedData: dataAddress,
+  //     });
+  //     const countForAddress = await listGrantedAccess.count;
+  //     console.log("count is:", countForAddress);
+  //     if (countForAddress > 0) {
+  //       return countForAddress;
+  //     }
+  //     return 0;
+  //   } catch (error) {
+  //     console.error("Error fetching data:", error);
+  //   }
+  // };
 
   useEffect(() => {
     connectWallet();
@@ -175,7 +201,7 @@ export default function Home() {
                 type="email"
                 placeholder="Email"
                 id="email"
-                className="rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
+                className="text-black rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
                 onChange={emailChange}
               />
               <button
@@ -186,13 +212,12 @@ export default function Home() {
                 Submit
               </button>
             </div>
-            {/* Protected Address form */}
             <div className="flex flex-col">
               <input
-                type="email"
+                type="string"
                 placeholder="Protected Address"
                 id="protectedAddress"
-                className="rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
+                className="text-black rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
                 onChange={protectedAddressChange}
               />
               <button
@@ -239,10 +264,10 @@ export default function Home() {
             <thead>
               <tr>
                 <th className="px-4 py-2 bg-gray-200 text-black">
-                  Data Address
+                  Data Addresses for {address}
                 </th>
                 <th className="px-4 py-2 bg-gray-200 text-black">
-                  Access Granted
+                  Access Count
                 </th>
               </tr>
             </thead>
@@ -250,8 +275,10 @@ export default function Home() {
               {Array.isArray(userData) && userData.length > 0 ? (
                 userData.map((data, index) => (
                   <tr key={index}>
-                    <td className="border px-4 py-2">{data.owner}</td>
                     <td className="border px-4 py-2">{data.address}</td>
+                    <td className="border px-4 py-2">
+                      <AsyncGrantedAccessFetcher dataAddress={data.address} />
+                    </td>
                   </tr>
                 ))
               ) : (
