@@ -3,14 +3,23 @@ import { IExecWeb3mail } from "@iexec/web3mail";
 import { useEffect, useState } from "react";
 import axios, { AxiosResponse } from "axios";
 import AsyncGrantedAccessFetcher from "@/components/grantAccess";
+import AsyncFetchContacts from "@/components/fetchContacts";
 
 export default function Home() {
+  /***
+   * TODO: For @param authorizedApp use 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 OR web3mail.apps.iexec.eth(web3 mail address)
+   * ? About Address: 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 is an address for the whitelist, which is a list of addresses for different versions of the web3mail app. Whenever a new version of the web3mail dapp is deployed (which is rare),
+   * ? the address of that new version is added to the whitelist. This ensures transparency for the builders, as they don't need to authorize the new version of the dapp to access their protected data : https://blockscout-bellecour.iex.ec/address/0x781482C39CcE25546583EaC4957Fb7Bf04C277D2
+   * ? For Hackathon this 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 / web3mail.apps.iexec.eth will be enough and simple to use, if anyone wants to create Own web3Mail Dapp. We can create using "Scone Framework" with TEE, FYR: https://protocol.docs.iex.ec/for-developers/confidential-computing/create-your-first-sgx-app
+   * TODO: For @param authorizedUser use 0x0000000000000000000000000000000000000000 to grant the data access publicly!
+   * ! No update on TokenURI from the team, hope they will resolve this Issue ASAP!
+   * */
+
   const [address, setAddress] = useState("");
   const [web3Provider, setWeb3Provider] = useState(null);
   const [email, setEmail] = useState("");
   const [protectedAddress, setProtectedAddress] = useState("");
   const [userData, setUserData] = useState([]);
-  const [contactsData, setContactsData] = useState([]);
 
   // Function to connect to MetaMask wallet
   async function connectWallet() {
@@ -36,12 +45,25 @@ export default function Home() {
 
         // Check if the chain ID matches the desired value
         if (chainId === "0x86") {
-          // Assuming chainId 0x86 is equivalent to 134 in decimal
+          // Chain ID matches the desired value (0x86)
           console.log("Chain ID matches the desired value (134)");
           // Perform further actions, such as navigating or switching to the desired blockchain
         } else {
+          // Chain ID does not match the desired value (0x86)
           console.log("Chain ID does not match the desired value (134)");
-          // Perform other actions if needed
+
+          // Switching the chain to 0x86
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0x86" }], // Chain ID 0x86 (134 in decimal)
+            });
+            console.log("Switched to chain ID 0x86 (134)");
+            // Perform further actions after switching
+          } catch (switchError) {
+            // Handle error during chain switching
+            console.error("Error switching chain:", switchError);
+          }
         }
       } catch (error) {
         console.error("Error connecting to wallet:", error);
@@ -51,58 +73,24 @@ export default function Home() {
     }
   }
 
+  // * Uses protectData Method
   const handleProtectMail = async () => {
     try {
-      const dataProtector = new IExecDataProtector(web3Provider);
+      if (isValidEmail(email)) {
+        const res = window.confirm(`Are you sure you want to store ${email} ?`);
+        if (res) {
+          const dataProtector = new IExecDataProtector(web3Provider);
 
-      const protectedData = await dataProtector.protectData({
-        data: {
-          email: email,
-        },
-      });
-
-      const res = await axios.post(
-        "http://localhost:5001/store-protectedData",
-        {
-          protectedData: protectedData,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          const protectedData = await dataProtector.protectData({
+            data: {
+              email: email,
+            },
+          });
+        } else {
+          alert("Change Email address!");
         }
-      );
-
-      if (res.status === 200) {
-        setEmail("");
       } else {
-        alert("Server error occurred. Please try again later.");
-      }
-    } catch (error) {
-      console.error("Unable to run: handleProtectMail", error);
-    }
-  };
-  const handleGrantAccess = async () => {
-    try {
-      const dataProtector = new IExecDataProtector(window.ethereum);
-
-      // TODO:
-      // tried to give access to all addresses by giving 0x0000000000000000000000000000000000000000 to both authorizedApp & authorizedUser but giving error
-      // Need to check
-
-      // UPDATE in the place of authorizedApp, authorizedUser: 1st need to give access to 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2(web3 mail address) then we need to use: web3mail.apps.iexec.eth
-      // TO grant all users use: web3mail.apps.iexec.eth(authorizedApp) and 0x0000000000000000000000000000000000000000(authorizedUser)
-      const grantedAccess = await dataProtector.grantAccess({
-        protectedData: protectedAddress,
-        authorizedApp: "0x781482C39CcE25546583EaC4957Fb7Bf04C277D2",
-        authorizedUser: "0x0000000000000000000000000000000000000000",
-      });
-
-      if (
-        grantedAccess.workerpoolrestrict ==
-        "0x0000000000000000000000000000000000000000"
-      ) {
-        alert("Given Access to Public");
+        alert("Invalid email address");
       }
 
       // const res = await axios.post(
@@ -123,9 +111,100 @@ export default function Home() {
       //   alert("Server error occurred. Please try again later.");
       // }
     } catch (error) {
+      console.error("Unable to run: handleProtectMail", error);
+    }
+  };
+
+  // * uses grantAccess Method
+  const handleGrantAccess = async () => {
+    try {
+      const dataProtector = new IExecDataProtector(window.ethereum);
+
+      const grantedAccess = await dataProtector.grantAccess({
+        protectedData: protectedAddress,
+        authorizedApp: "0x781482C39CcE25546583EaC4957Fb7Bf04C277D2",
+        authorizedUser: "0x0000000000000000000000000000000000000000",
+      });
+
+      if (
+        grantedAccess.workerpoolrestrict ==
+        "0x0000000000000000000000000000000000000000"
+      ) {
+        alert("Given Access to Public");
+      }
+    } catch (error) {
       console.error("Unable to run: handleGrantAccess", error);
     }
   };
+
+  // * uses fetchProtectedData Method
+  const fetchYourData = async () => {
+    try {
+      const dataProtector = new IExecDataProtector(window.ethereum);
+      const listProtectedData = await dataProtector.fetchProtectedData({
+        owner: address,
+      });
+      setUserData(listProtectedData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+  // * uses fetchGrantedAccess Method
+  const checkAccessToAll = async () => {
+    try {
+      const dataProtector = new IExecDataProtector(window.ethereum);
+      const listGrantedAccess = await dataProtector.fetchGrantedAccess({
+        protectedData: protectedAddress,
+      });
+      if (
+        listGrantedAccess.grantedAccess[0].workerpoolrestrict ==
+        "0x0000000000000000000000000000000000000000"
+      ) {
+        alert(`Publicly Access given to ${protectedAddress} Data Address!`);
+      }
+      document.getElementById("protectedData").value = "";
+
+      setProtectedAddress("");
+    } catch (error) {
+      console.error("Error in running checkAccessToAll function:", error);
+    }
+  };
+
+  // * uses revokeAllAccessObservable Method
+  const handleRevokeAllAccess = async () => {
+    try {
+      const dataProtector = new IExecDataProtector(window.ethereum);
+
+      const revokeAllAccessObservable = await dataProtector
+        .revokeAllAccessObservable({
+          protectedData: protectedAddress,
+          // authorizedApp: "0x781482C39CcE25546583EaC4957Fb7Bf04C277D2",
+          // authorizedUser: "0x0000000000000000000000000000000000000000",
+        })
+        .subscribe({
+          next: (data) => {
+            console.log("next", data);
+          },
+          error: (error) => {
+            console.log("error", error);
+          },
+          complete: () => {
+            alert("revokeAllAccess complete");
+          },
+        });
+
+      document.getElementById("protectedData").value = "";
+      setProtectedAddress("");
+    } catch (error) {
+      console.error("Unable to run: handleRevokeAllAccess", error);
+    }
+  };
+
+  function isValidEmail(email) {
+    // Regular expression pattern for validating email format
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailPattern.test(email);
+  }
 
   // Define the emailChange function
   function emailChange(event) {
@@ -133,6 +212,7 @@ export default function Home() {
     const emailValue = event.target.value;
     // You can set the email value to state here if needed
     setEmail(emailValue);
+    // console.log("the email is: ", email);
   }
   function protectedAddressChange(event) {
     // Retrieve the email value from the input field
@@ -141,34 +221,15 @@ export default function Home() {
     setProtectedAddress(addressValue);
   }
 
-  const fetchYourData = async () => {
-    try {
-      // const web3mail = new IExecWeb3mail(web3Provider);
-      // const contactsList = await web3mail.fetchMyContacts();
-      const dataProtector = new IExecDataProtector(window.ethereum);
-      const listProtectedData = await dataProtector.fetchProtectedData({
-        owner: address,
-      });
-      setUserData(listProtectedData);
-      // setUserData((prevData) => ({
-      //   ...prevData,
-      //   listProtectedData
-      // }));
-      // console.log("user data is: ", userData);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
-
-  const fetchMyContacts = async () => {
-    try {
-      const web3mail = new IExecWeb3mail(window.ethereum);
-      const contactsList = await web3mail.fetchMyContacts();
-      setContactsData(contactsList);
-    } catch (error) {
-      console.error("Unabe to run fetchMyContacts", error);
-    }
-  };
+  // const fetchMyContacts = async () => {
+  //   try {
+  //     const web3mail = new IExecWeb3mail(window.ethereum);
+  //     const contactsList = await web3mail.fetchMyContacts();
+  //     setContactsData(contactsList);
+  //   } catch (error) {
+  //     console.error("Unabe to run fetchMyContacts", error);
+  //   }
+  // };
   const sendMail = async () => {
     // Get the values of address, subject, and content from the input fields
     const protectedAddress = document.getElementById("protectedData").value;
@@ -188,9 +249,6 @@ export default function Home() {
       // senderName: address,
     });
 
-    // Here you can implement the logic to send the email
-    // This could involve making an HTTP request to a backend server that handles email sending
-
     // For demonstration purposes, let's just log the values to the console
     console.log("Address:", address);
     console.log("Subject:", subject);
@@ -205,26 +263,10 @@ export default function Home() {
     alert("Email sent successfully", sendEmail);
   };
 
-  // const fetchGrantedAccess = async (dataAddress) => {
-  //   try {
-  //     const listGrantedAccess = await dataProtector.fetchGrantedAccess({
-  //       protectedData: dataAddress,
-  //     });
-  //     const countForAddress = await listGrantedAccess.count;
-  //     console.log("count is:", countForAddress);
-  //     if (countForAddress > 0) {
-  //       return countForAddress;
-  //     }
-  //     return 0;
-  //   } catch (error) {
-  //     console.error("Error fetching data:", error);
-  //   }
-  // };
-
   useEffect(() => {
     connectWallet();
     fetchYourData();
-    fetchMyContacts();
+    // fetchMyContacts();
     setEmail("");
   }, [address]);
 
@@ -235,7 +277,7 @@ export default function Home() {
           {address.length === 0 ? (
             <button
               id="connectWalletButton"
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4"
               onClick={() => connectWallet()}
             >
               Connect Wallet
@@ -257,16 +299,32 @@ export default function Home() {
               />
               <button
                 id="submitEmailButton"
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 onClick={() => handleProtectMail()}
               >
-                Submit
+                Protect Data
               </button>
             </div>
             <div className="flex flex-col">
               <input
                 type="string"
-                placeholder="Protected Address"
+                placeholder="Protected Data Address"
+                id="protectedAddress"
+                className="text-black rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
+                onChange={protectedAddressChange}
+              />
+              <button
+                id="submitProtectedAddressButton"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                onClick={() => handleGrantAccess()}
+              >
+                Grant Public Access to Data
+              </button>
+            </div>
+            <div className="flex flex-col">
+              <input
+                type="string"
+                placeholder="Protected Data Address"
                 id="protectedAddress"
                 className="text-black rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
                 onChange={protectedAddressChange}
@@ -274,9 +332,25 @@ export default function Home() {
               <button
                 id="submitProtectedAddressButton"
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                onClick={() => handleGrantAccess()}
+                onClick={() => checkAccessToAll()}
               >
-                Grant Access to Data
+                Check Public Access
+              </button>
+            </div>
+            <div className="flex flex-col">
+              <input
+                type="string"
+                placeholder="Protected Data Address"
+                id="protectedAddress"
+                className="text-black rounded-md border border-gray-300 px-2 py-1 focus:outline-none focus:border-blue-500 mb-2"
+                onChange={protectedAddressChange}
+              />
+              <button
+                id="submitProtectedAddressButton"
+                className="bg-red-600 hover:bg-red-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                onClick={() => handleRevokeAllAccess()}
+              >
+                Revoke All Acceses
               </button>
             </div>
             {/* Mail Content form */}
@@ -304,7 +378,7 @@ export default function Home() {
               />
               <button
                 id="sendMailButton"
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 onClick={() => sendMail()}
               >
                 Send Mail
@@ -354,34 +428,11 @@ export default function Home() {
                   Data Owners
                 </th>
                 <th className="px-4 py-2 bg-gray-200 text-black">
-                  Data Addresses
+                  Data Addresses with Public Access
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {Array.isArray(contactsData) && contactsData.length > 0 ? (
-                contactsData.map((data, index) => (
-                  <tr key={index}>
-                    {data ? (
-                      <>
-                        <td className="border px-4 py-2">{data.owner}</td>
-                        <td className="border px-4 py-2">{data.address}</td>
-                      </>
-                    ) : (
-                      <td className="border px-4 py-2" colSpan="2">
-                        Loading...
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="border px-4 py-2" colSpan="2">
-                    No data available
-                  </td>
-                </tr>
-              )}
-            </tbody>
+            <AsyncFetchContacts />
           </table>
         </div>
       </div>
