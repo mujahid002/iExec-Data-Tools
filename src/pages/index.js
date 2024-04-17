@@ -6,15 +6,6 @@ import AsyncGrantedAccessFetcher from "@/components/grantAccess";
 import AsyncFetchContacts from "@/components/fetchContacts";
 
 export default function Home() {
-  /***
-   * TODO: For @param authorizedApp use 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 OR web3mail.apps.iexec.eth(web3 mail address)
-   * ? About Address: 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 is an address for the whitelist, which is a list of addresses for different versions of the web3mail app. Whenever a new version of the web3mail dapp is deployed (which is rare),
-   * ? the address of that new version is added to the whitelist. This ensures transparency for the builders, as they don't need to authorize the new version of the dapp to access their protected data : https://blockscout-bellecour.iex.ec/address/0x781482C39CcE25546583EaC4957Fb7Bf04C277D2
-   * ? For Hackathon this 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 / web3mail.apps.iexec.eth will be enough and simple to use, if anyone wants to create Own web3Mail Dapp. We can create using "Scone Framework" with TEE, FYR: https://protocol.docs.iex.ec/for-developers/confidential-computing/create-your-first-sgx-app
-   * TODO: For @param authorizedUser use 0x0000000000000000000000000000000000000000 to grant the data access publicly!
-   * ! No update on TokenURI from the team, hope they will resolve this Issue ASAP!
-   * */
-
   const [address, setAddress] = useState("");
   const [web3Provider, setWeb3Provider] = useState(null);
   const [email, setEmail] = useState("");
@@ -118,6 +109,14 @@ export default function Home() {
   // * uses grantAccess Method
   const handleGrantAccess = async () => {
     try {
+      /***
+       * TODO: For @param authorizedApp use 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 OR web3mail.apps.iexec.eth(web3 mail address)
+       * ? About Address: 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 is an address for the whitelist, which is a list of addresses for different versions of the web3mail app. Whenever a new version of the web3mail dapp is deployed (which is rare),
+       * ? the address of that new version is added to the whitelist. This ensures transparency for the builders, as they don't need to authorize the new version of the dapp to access their protected data : https://blockscout-bellecour.iex.ec/address/0x781482C39CcE25546583EaC4957Fb7Bf04C277D2
+       * ? For Hackathon this 0x781482C39CcE25546583EaC4957Fb7Bf04C277D2 / web3mail.apps.iexec.eth will be enough and simple to use, if anyone wants to create Own web3Mail Dapp. We can create using "Scone Framework" with TEE, FYR: https://protocol.docs.iex.ec/for-developers/confidential-computing/create-your-first-sgx-app
+       * TODO: For @param authorizedUser use 0x0000000000000000000000000000000000000000 to grant the data access publicly!
+       * ! No update on TokenURI from the team, hope they will resolve this Issue ASAP!
+       * */
       const dataProtector = new IExecDataProtector(window.ethereum);
 
       const grantedAccess = await dataProtector.grantAccess({
@@ -156,6 +155,9 @@ export default function Home() {
       const listGrantedAccess = await dataProtector.fetchGrantedAccess({
         protectedData: protectedAddress,
       });
+      if (listGrantedAccess.grantedAccess[0] == undefined) {
+        alert(`${protectedAddress} is a Private Data Address!`);
+      }
       if (
         listGrantedAccess.grantedAccess[0].workerpoolrestrict ==
         "0x0000000000000000000000000000000000000000"
@@ -246,7 +248,7 @@ export default function Home() {
       emailSubject: subject,
       emailContent: content,
       contentType: "text/html",
-      // senderName: address,
+      senderName: "Sent From GetBoarded",
     });
 
     // For demonstration purposes, let's just log the values to the console
@@ -260,7 +262,7 @@ export default function Home() {
     document.getElementById("emailContent").value = "";
 
     // Optionally, you can provide feedback to the user that the email has been sent
-    alert("Email sent successfully", sendEmail);
+    alert("Email sent successfully", sendEmail.taskId);
   };
 
   useEffect(() => {
